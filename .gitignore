@@ -1,20 +1,78 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-venv/
-.env
+*$py.class
 
-# Node
-node_modules/
-.expo/
+# Distribution / packaging
 dist/
+build/
+*.egg-info/
+.eggs/
+*.egg
+*.whl
+
+# Virtual environment
+venv/
+env/
+.venv
+.env
+*.env
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Node modules and package manager
+node_modules/
+.npm
+.yarn
+
+# Expo / React Native
+.expo/
+.expo-shared/
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
 *.orig.*
+*.tsbuildinfo
+web-build/
+
+# Next.js (if ever added)
+.next/
+
+# Build output
+out/
+
+# Environment files
+.env.local
+.env.production
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
