@@ -34,12 +34,12 @@ Antarman AI is a local mental health artificial intelligence system specifically
 
 ## Installation
 
-[Add installation instructions here]
+
 
 ## Usage
 
-[Add usage examples here]
+
 
 ## Contributing
 
-[Add contribution guidelines here]
+
