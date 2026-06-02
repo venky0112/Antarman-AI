@@ -1,4 +1,4 @@
-"""Crisis detection using DistilBERT and MentalBERT ensemble."""
+"""Crisis detection using DistilBERT and Regex fallback"""
 
 import re
 import logging
