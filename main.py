@@ -2,59 +2,38 @@ import sys
 import os
 import logging
 import io
+from langdetect import detect
 
 # Force Windows console to output UTF-8 so printing Hindi/non-ASCII characters won't crash
 if sys.platform.startswith('win'):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-# Configure basic logging — set to ERROR to silence network warnings
-logging.basicConfig(level=logging.ERROR)
+# Configure basic logging
+logging.basicConfig(level=logging.INFO)
 
 # Load environment variables
 from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(__file__), 'backend', '.env')
 load_dotenv(dotenv_path=env_path)
 
+# Add backend to path so we can import its modules dynamically (optional now)
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 
 from backend.crisis_detector import predict_crisis
 from backend.translator import translate_to_english, translate_from_english
 from backend.llm_agent import get_llm_response
 
-
 def detect_language(text: str) -> str:
-    """Detect the language of *text* using deep-translator's built-in detector.
-    Returns an ISO 639-1 language code (e.g. 'hi', 'ta', 'en').
-    Falls back to 'en' if detection fails.
+    """Detect language code (ISO 639‑1) using langdetect.
+    Returns 'en' if detection fails.
     """
     try:
-        from deep_translator import single_detection
-        lang = single_detection(text, api_key=None)
-        return lang if lang else "en"
+        # langdetect may raise exception for empty or ambiguous text
+        lang = detect(text)
+        return lang
     except Exception:
-        pass
-
-    # Lightweight script-based heuristic (no network needed)
-    for ch in text:
-        cp = ord(ch)
-        if 0x0900 <= cp <= 0x097F:   # Devanagari  → Hindi / Marathi
-            return "hi"
-        if 0x0B80 <= cp <= 0x0BFF:   # Tamil
-            return "ta"
-        if 0x0C00 <= cp <= 0x0C7F:   # Telugu
-            return "te"
-        if 0x0980 <= cp <= 0x09FF:   # Bengali
-            return "bn"
-        if 0x0A80 <= cp <= 0x0AFF:   # Gujarati
-            return "gu"
-        if 0x0A00 <= cp <= 0x0A7F:   # Punjabi (Gurmukhi)
-            return "pa"
-        if 0x0D00 <= cp <= 0x0D7F:   # Malayalam
-            return "ml"
-        if 0x0C80 <= cp <= 0x0CFF:   # Kannada
-            return "kn"
-    return "en"
+        return "en"
 
 
 def main():
@@ -84,11 +63,13 @@ def main():
             # ── Step 2: Crisis Detection (on original text) ────────────────
             is_crisis = predict_crisis(user_input)
             if is_crisis:
+                print("  [Crisis Status: ⚠️ CRITICAL]")
                 print("\n⚠️  CRISIS ALERT: This message indicates potential self-harm or crisis.")
                 print("   Please contact a helpline immediately:")
                 print("   • iCall (India): 9152987821")
-                print("   • Vandrevala Foundation: 1860-2662-345 (24x7)")
-                # Still continue to give a supportive response
+                print("   • Vandrevala Foundation: 1860-2662-345 (24x7)\n")
+            else:
+                print("  [Crisis Status: ✓ Safe]")
 
             # ── Step 3: Translate to English ───────────────────────────────
             english_text = translate_to_english(user_input, src_lang)
@@ -106,9 +87,11 @@ def main():
                 conversation_history = conversation_history[-20:]
 
             # ── Step 5: Translate response back to user's language ─────────
-            final_response = translate_from_english(english_response, src_lang)
-
-            print(f"\nAntarman: {final_response}\n")
+            if src_lang != "en":
+                final_response = translate_from_english(english_response, src_lang)
+                print(f"\nAntarman ({src_lang.upper()}): {final_response}\n")
+            else:
+                print(f"\nAntarman: {english_response}\n")
 
         except KeyboardInterrupt:
             print("\nExiting...")

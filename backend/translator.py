@@ -86,7 +86,7 @@ def translate_to_english(text: str, src_lang: str) -> str:
             return eng
 
     logger.warning("All translation methods failed for '%s' (%s→en)", text, src_lang)
-    return "[Translated from {}] {}".format(src_lang, text)
+    return text
 
 
 def translate_from_english(text: str, tgt_lang: str) -> str:
