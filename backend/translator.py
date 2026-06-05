@@ -1,76 +1,117 @@
+"""Translation module using deep-translator (Google Translate) as the primary engine.
 
-"""Translation module using HuggingFace free Inference API (IndicTrans2)."""
+Supports English ↔ all major Indian languages (Hindi, Tamil, Telugu, Bengali,
+Marathi, Gujarati, Kannada, Malayalam, Punjabi, Odia, Urdu, etc.).
+No API key required. Falls back to a static phrase dictionary if offline.
+"""
 
-import os
-import requests
 import logging
 
 logger = logging.getLogger(__name__)
 
-HF_TOKEN = os.getenv("HF_TOKEN", "")
-# HuggingFace free tier Inference API endpoint
-FREE_API_URL = "https://api-inference.huggingface.co/models/ai4bharat/indictrans2-en-indic-distilled-200M"
-HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"} if HF_TOKEN else {}
-
-FALLBACK_PHRASES = {
+# ---------------------------------------------------------------------------
+# Static offline fallback dictionary (used only when network is unavailable)
+# ---------------------------------------------------------------------------
+FALLBACK_TO_EN: dict[str, dict[str, str]] = {
     "hi": {
-        "hello": "नमस्ते",
-        "how are you": "आप कैसे हैं",
-        "i am feeling anxious": "मुझे चिंता हो रही है",
-        "i am feeling sad": "मुझे दुख हो रहा है"
+        "नमस्ते": "hello",
+        "आप कैसे हैं": "how are you",
+        "मुझे चिंता हो रही है": "i am feeling anxious",
+        "मुझे दुख हो रहा है": "i am feeling sad",
+        "मुझे अच्छा नहीं लग रहा": "i am not feeling well",
     },
     "ta": {
-        "hello": "வணக்கம்",
-        "how are you": "நீங்கள் எப்படி இருக்கிறீர்கள்",
-        "i am feeling anxious": "எனக்கு பதட்டமாக இருக்கிறது",
-        "i am feeling sad": "எனக்கு வருத்தமாக இருக்கிறது"
-    }
+        "வணக்கம்": "hello",
+        "நீங்கள் எப்படி இருக்கிறீர்கள்": "how are you",
+        "எனக்கு பதட்டமாக இருக்கிறது": "i am feeling anxious",
+        "எனக்கு வருத்தமாக இருக்கிறது": "i am feeling sad",
+    },
+    "te": {
+        "నమస్కారం": "hello",
+        "మీరు ఎలా ఉన్నారు": "how are you",
+    },
+    "bn": {
+        "হ্যালো": "hello",
+        "আপনি কেমন আছেন": "how are you",
+    },
 }
 
-def _call_free_api(text: str, src_lang: str, tgt_lang: str) -> str:
-    if not HF_TOKEN:
-        return ""
-    payload = {
-        "inputs": text,
-        "parameters": {"src_lang": src_lang, "tgt_lang": tgt_lang}
-    }
+FALLBACK_FROM_EN: dict[str, dict[str, str]] = {
+    lang: {v: k for k, v in phrases.items()}
+    for lang, phrases in FALLBACK_TO_EN.items()
+}
+
+
+# ---------------------------------------------------------------------------
+# Core translation helpers
+# ---------------------------------------------------------------------------
+
+def _google_translate(text: str, source: str, target: str) -> str:
+    """Call Google Translate via deep-translator. Returns '' on any failure."""
     try:
-        resp = requests.post(FREE_API_URL, headers=HEADERS, json=payload, timeout=10)
-        resp.raise_for_status()
-        result = resp.json()
-        if isinstance(result, list) and len(result) > 0:
-            return result[0].get("generated_text", "")
-        return ""
-    except Exception as e:
-        logger.warning("Free API call failed: %s", e)
+        from deep_translator import GoogleTranslator
+        result = GoogleTranslator(source=source, target=target).translate(text)
+        return result or ""
+    except Exception as exc:
+        logger.warning("GoogleTranslator failed (%s → %s): %s", source, target, exc)
         return ""
 
-def _fallback_translate(text: str, src_lang: str, tgt_lang: str) -> str:
-    phrases = FALLBACK_PHRASES.get(src_lang, {})
-    for eng, native in phrases.items():
-        if text.strip().lower() == native:
-            return eng
-    return "[Translated from {}] {}".format(src_lang, text)
 
-def _fallback_back_translate(text: str, src_lang: str, tgt_lang: str) -> str:
-    phrases = FALLBACK_PHRASES.get(tgt_lang, {})
-    for eng, native in phrases.items():
-        if text.strip().lower() == eng:
-            return native
-    return "{} [Translated to {}]".format(text, tgt_lang)
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 def translate_to_english(text: str, src_lang: str) -> str:
+    """Translate *text* from *src_lang* to English.
+
+    Args:
+        text:     Input text in the source language.
+        src_lang: BCP-47 / ISO 639-1 language code (e.g. 'hi', 'ta', 'en').
+
+    Returns:
+        Translated English string.
+    """
     if src_lang == "en":
         return text
-    api_result = _call_free_api(text, src_lang, "eng_Latn")
-    if api_result:
-        return api_result
-    return _fallback_translate(text, src_lang, "eng")
+
+    # Primary: Google Translate
+    result = _google_translate(text, source=src_lang, target="en")
+    if result:
+        return result
+
+    # Offline fallback: static dictionary
+    phrases = FALLBACK_TO_EN.get(src_lang, {})
+    for native, eng in phrases.items():
+        if text.strip().lower() == native.lower():
+            return eng
+
+    logger.warning("All translation methods failed for '%s' (%s→en)", text, src_lang)
+    return "[Translated from {}] {}".format(src_lang, text)
+
 
 def translate_from_english(text: str, tgt_lang: str) -> str:
+    """Translate *text* from English to *tgt_lang*.
+
+    Args:
+        text:     Input text in English.
+        tgt_lang: BCP-47 / ISO 639-1 language code (e.g. 'hi', 'ta').
+
+    Returns:
+        Translated string in the target language.
+    """
     if tgt_lang == "en":
         return text
-    api_result = _call_free_api(text, "eng_Latn", tgt_lang)
-    if api_result:
-        return api_result
-    return _fallback_back_translate(text, "eng", tgt_lang)
+
+    # Primary: Google Translate
+    result = _google_translate(text, source="en", target=tgt_lang)
+    if result:
+        return result
+
+    # Offline fallback: static dictionary
+    phrases = FALLBACK_FROM_EN.get(tgt_lang, {})
+    for eng, native in phrases.items():
+        if text.strip().lower() == eng.lower():
+            return native
+
+    logger.warning("All translation methods failed for '%s' (en→%s)", text, tgt_lang)
+    return "{} [Translated to {}]".format(text, tgt_lang)
