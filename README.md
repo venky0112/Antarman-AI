@@ -21,8 +21,8 @@ This project is in its early prototype stage. The current codebase establishes t
 The `final-clean` branch contains a working CLI prototype with the following components functional end-to-end:
 
 - Language detection on raw user input using `langdetect`
-- Real-time crisis and suicidality screening on the original user message, before any translation
 - Input translation from Indian languages to English using Google Translate via `deep-translator`
+- Real-time crisis and suicidality screening on the original user message
 - Conversational response generation via Google Gemini 2.5 Flash with multi-turn conversation context (last 10 turns retained)
 - Response translation back to the user's detected language
 - Windows UTF-8 console compatibility for non-ASCII Indian language output
@@ -40,10 +40,10 @@ User Input (any Indian language)
 Language Detection (langdetect)
         |
         v
-Crisis Detection on raw input (HuggingFace classifier -> regex fallback)
+Translation to English (deep-translator / Google Translate)
         |
         v
-Translation to English (deep-translator / Google Translate)
+Crisis Detection on raw input (HuggingFace classifier -> regex fallback)
         |
         v
 LLM Response Generation (Google Gemini 2.5 Flash)
@@ -55,7 +55,7 @@ Translation back to User's Language (deep-translator)
 Response printed to console
 ```
 
-Crisis detection deliberately runs on the original untranslated text to avoid losing signal during translation. Components are modular and designed to be swapped or upgraded independently as the project matures.
+Components are modular and designed to be swapped or upgraded independently as the project matures.
 
 ---
 
@@ -162,18 +162,20 @@ An offline static fallback dictionary is included for a subset of common phrases
 
 ## Roadmap
 
-- [x] Core pipeline: detect language -> screen for crisis -> translate -> generate -> translate back
+- [x] Core pipeline: detect language -> translate -> screen for crisis-> generate -> translate back
 - [x] Google Gemini integration with multi-turn conversation context
 - [x] Crisis detection with HuggingFace model and regex fallback
 - [x] Configurable environment via `backend/.env`
 - [x] Windows UTF-8 console support for Indian language output
 - [ ] Finalize and evaluate model choices for LLM and crisis detection
-- [ ] Add RAG pipeline over mental health knowledge sources
+- [ ] Fine-tuning an LLM on a mental health domain dataset
+- [ ] Add RAG pipeline and Web Search over genuine mental health knowledge sources
 - [ ] REST API layer (FastAPI) to expose the pipeline as a service
 - [ ] Build a basic chat UI (web or mobile)
 - [ ] Evaluate translation quality across all supported languages
 - [ ] Safety benchmarking and red-teaming
 - [ ] Expand offline fallback dictionary coverage
+- [ ] Integrate actual Psycologist and user periodic feedback
 - [ ] Community testing and feedback iteration
 
 ---
